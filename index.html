@@ -3,34 +3,38 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>THE FITNESS CLUB</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
 <style>
 *{box-sizing:border-box}
 body{margin:0;background:#101010;color:white;font-family:Arial,sans-serif}
-header{background:#1b1b1b;padding:22px;border-bottom:2px solid #e63939}
+header{background:#1b1b1b;padding:20px;border-bottom:2px solid #e63939}
 header h2{margin:0;color:#ff4545;letter-spacing:2px}
-header p{margin:7px 0 0;color:#aaa;font-size:13px}
+header p{color:#aaa;font-size:13px}
 main{padding:18px;max-width:1000px;margin:auto}
 h3{color:#ff4545}
-.stats{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
-.card{background:#202020;padding:17px;border-radius:10px;border:1px solid #333}
-.card p{color:#aaa;margin:0}
-.card h2{margin:10px 0 0}
 input,select,button{width:100%;padding:12px;margin:6px 0;border-radius:7px;border:1px solid #444;font-size:15px}
 input,select{background:#202020;color:white}
 button{background:#e63939;color:white;border:0;font-weight:bold;cursor:pointer}
-button.secondary{background:#333}
-button.danger{background:#8e2424}
-.member{background:#202020;padding:14px;margin:10px 0;border-radius:9px;border-left:3px solid #e63939}
-.member p{color:#bbb;margin:7px 0}
+.secondary{background:#333}
+.danger{background:#8e2424}
+.card,.member{background:#202020;padding:15px;border-radius:10px;border:1px solid #333;margin:10px 0}
+.stats{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+.card p{color:#aaa;margin:0}
+.card h2{margin-bottom:0}
+.section{margin-top:25px}
+.member p{color:#bbb;margin:8px 0}
 .tag{color:#62df8c;font-weight:bold}
 .pending{color:#ff7777;font-weight:bold}
-.section{margin-top:25px}
+.hidden{display:none}
+.actions{display:grid;grid-template-columns:1fr 1fr;gap:5px}
+small{color:#aaa}
 </style>
 </head>
-<body>
 
+<body>
 <header>
 <h2>THE FITNESS CLUB</h2>
 <p>GYM MANAGEMENT SYSTEM</p>
@@ -38,181 +42,470 @@ button.danger{background:#8e2424}
 
 <main>
 
+<!-- LOGIN -->
+<section id="loginBox">
+<h3>Owner Login</h3>
+<p><small>Login using your registered gym owner account.</small></p>
+<input id="email" type="email" placeholder="Owner Email">
+<input id="password" type="password" placeholder="Password">
+<button id="loginBtn" onclick="login()">Login</button>
+<p id="loginMessage"></p>
+</section>
+
+<!-- DASHBOARD -->
+<section id="dashboard" class="hidden">
+
+<div style="display:flex;justify-content:space-between;align-items:center">
 <h3>Dashboard</h3>
+<button style="width:auto;padding:10px" onclick="logout()">Logout</button>
+</div>
+
 <div class="stats">
-<div class="card">
-<p>Total Members</p>
-<h2 id="total">0</h2>
-</div>
-<div class="card">
-<p>Fees Paid</p>
-<h2 id="paid">0</h2>
-</div>
-<div class="card">
-<p>Fees Pending</p>
-<h2 id="pending">0</h2>
-</div>
-<div class="card">
-<p>Total Fees Collected</p>
-<h2 id="collection">₹0</h2>
+<div class="card"><p>Total Members</p><h2 id="total">0</h2></div>
+<div class="card"><p>Active Members</p><h2 id="active">0</h2></div>
+<div class="card"><p>Fees Paid</p><h2 id="paid">0</h2></div>
+<div class="card"><p>Fees Pending</p><h2 id="pending">0</h2></div>
+<div class="card" style="grid-column:span 2">
+<p>Total Fees Collected</p><h2 id="collection">₹0</h2>
 </div>
 </div>
 
+<!-- ADD MEMBER -->
 <div class="section">
-<h3>Add New Member</h3>
+<h3 id="formTitle">Add New Member</h3>
+
 <input id="name" placeholder="Member Name">
-<input id="phone" placeholder="Phone Number" type="tel">
-<input id="plan" placeholder="Monthly Fee (₹)" type="number">
+<input id="phone" type="tel" maxlength="10" placeholder="10 Digit Phone Number">
+<input id="fee" type="number" min="1" placeholder="Monthly Fee (₹)">
+
 <label>Joining Date</label>
 <input id="joining" type="date">
+
 <label>Fee Due Date</label>
 <input id="due" type="date">
-<button onclick="addMember()">+ Add Member</button>
+
+<button id="saveBtn" onclick="saveMember()">+ Add Member</button>
+<button id="cancelEdit" class="secondary hidden" onclick="resetForm()">Cancel Edit</button>
 </div>
 
+<!-- MEMBER RECORDS -->
 <div class="section">
 <h3>Member Records</h3>
 <input id="search" placeholder="Search member..." oninput="render()">
+
 <select id="filter" onchange="render()">
 <option value="all">All Members</option>
+<option value="active">Active Members</option>
+<option value="inactive">Inactive Members</option>
 <option value="paid">Fees Paid</option>
 <option value="pending">Fees Pending</option>
 </select>
-<div id="members"></div>
+
+<div id="members">Loading...</div>
 </div>
 
+<!-- PAYMENT HISTORY -->
+<div class="section">
+<h3>Recent Payment History</h3>
+<div id="payments">Loading...</div>
+</div>
+
+<!-- ATTENDANCE -->
+<div class="section">
+<h3>Today's Attendance</h3>
+<h2 id="attendanceCount">0</h2>
+<div id="attendance">Loading...</div>
+</div>
+
+</section>
 </main>
 
 <script>
-let members = JSON.parse(localStorage.getItem("gymMembers") || "[]");
+const SUPABASE_URL =
+"https://bllnupeyhecsnsamccuc.supabase.co";
 
-function save(){
- localStorage.setItem("gymMembers",JSON.stringify(members));
- render();
+const SUPABASE_KEY =
+"sb_publishable_2KdgSw9njxdosSsSD4xfQA_RKBxo8WB";
+
+const db = window.supabase.createClient(
+SUPABASE_URL,SUPABASE_KEY
+);
+
+let currentUser = null;
+let members = [];
+let editingId = null;
+
+const $ = id => document.getElementById(id);
+
+function safe(value){
+return String(value ?? "").replace(/[&<>"']/g,c=>({
+"&":"&amp;","<":"&lt;",">":"&gt;",
+'"':"&quot;","'":"&#39;"
+})[c]);
 }
 
-function addMember(){
- const name=document.getElementById("name").value.trim();
- const phone=document.getElementById("phone").value.trim();
- const fee=Number(document.getElementById("plan").value);
- const joining=document.getElementById("joining").value;
- const due=document.getElementById("due").value;
+async function login(){
+const email=$("email").value.trim();
+const password=$("password").value;
 
- if(!name || !phone || !fee || !joining || !due){
-  alert("Please fill all details");
-  return;
- }
- if(!/^[0-9]{10}$/.test(phone)){
-  alert("Enter a valid 10-digit phone number");
-  return;
- }
- if(fee<=0 || !Number.isFinite(fee)){
-  alert("Enter a valid fee");
-  return;
- }
- if(due<joining){
-  alert("Due date cannot be before joining date");
-  return;
- }
-
- members.push({
-  id:Date.now(),
-  name,phone,fee,joining,due,
-  status:"pending"
- });
-
- save();
- ["name","phone","plan","joining","due"].forEach(id=>{
-  document.getElementById(id).value="";
- });
- alert("Member added successfully!");
+if(!email || !password){
+alert("Enter email and password");
+return;
 }
 
-function togglePayment(id){
- const m=members.find(x=>x.id===id);
- if(!m)return;
- m.status=m.status==="paid"?"pending":"paid";
- save();
+$("loginBtn").disabled=true;
+$("loginMessage").innerText="Logging in...";
+
+const {data,error}=await db.auth.signInWithPassword({
+email,password
+});
+
+$("loginBtn").disabled=false;
+
+if(error){
+$("loginMessage").innerText=error.message;
+return;
 }
 
-function removeMember(id){
- if(!confirm("Are you sure you want to remove this member?"))return;
- members=members.filter(m=>m.id!==id);
- save();
+currentUser=data.user;
+await showDashboard();
 }
 
-function reminder(m){
- const msg=encodeURIComponent(
-  "Hello "+m.name+", your gym fee of ₹"+m.fee+
-  " is pending. Due date: "+m.due+
-  ". Please contact THE FITNESS CLUB."
- );
- window.open("https://wa.me/91"+m.phone+"?text="+msg,"_blank");
+async function logout(){
+await db.auth.signOut();
+currentUser=null;
+$("dashboard").classList.add("hidden");
+$("loginBox").classList.remove("hidden");
+$("password").value="";
+}
+
+async function showDashboard(){
+$("loginBox").classList.add("hidden");
+$("dashboard").classList.remove("hidden");
+await loadAll();
+}
+
+async function loadAll(){
+const {data,error}=await db.from("gym_members")
+.select("*")
+.order("created_at",{ascending:false});
+
+if(error){
+alert("Member loading error: "+error.message);
+return;
+}
+
+members=data || [];
+render();
+await loadPayments();
+await loadAttendance();
 }
 
 function render(){
- const search=document.getElementById("search").value.toLowerCase();
- const filter=document.getElementById("filter").value;
+const search=$("search").value.toLowerCase();
+const filter=$("filter").value;
 
- document.getElementById("total").innerText=members.length;
- document.getElementById("paid").innerText=members.filter(m=>m.status==="paid").length;
- document.getElementById("pending").innerText=members.filter(m=>m.status==="pending").length;
+const active=members.filter(m=>m.status==="active");
+const paid=members.filter(m=>m.fee_status==="paid");
+const pending=members.filter(m=>m.fee_status==="pending");
 
- const collection=members
- .filter(m=>m.status==="paid")
- .reduce((sum,m)=>sum+m.fee,0);
- document.getElementById("collection").innerText="₹"+collection;
+$("total").innerText=members.length;
+$("active").innerText=active.length;
+$("paid").innerText=paid.length;
+$("pending").innerText=pending.length;
 
- const list=members.filter(m=>
-  m.name.toLowerCase().includes(search) &&
-  (filter==="all" || m.status===filter)
- );
+const collection=paymentsTotal;
+$("collection").innerText="₹"+collection;
 
- document.getElementById("members").innerHTML=list.map(m=>`
- <div class="member">
-  <strong>${escapeHTML(m.name)}</strong>
-  <p>Phone: ${escapeHTML(m.phone)}</p>
-  <p>Monthly Fee: ₹${m.fee}</p>
-  <p>Joining: ${escapeHTML(m.joining)}</p>
-  <p>Due Date: ${escapeHTML(m.due)}</p>
-  <p class="${m.status==="paid"?"tag":"pending"}">
-   ${m.status==="paid"?"PAID":"PENDING"}
-  </p>
-  <button onclick="togglePayment(${m.id})">
-   Mark ${m.status==="paid"?"Pending":"Paid"}
-  </button>
-  <button class="secondary" onclick='reminder(${JSON.stringify(m).replace(/'/g,"&#39;")})'>
-   WhatsApp Reminder
-  </button>
-  <button class="danger" onclick="removeMember(${m.id})">
-   Remove Member
-  </button>
- </div>
- `).join("") || "<p>No members found.</p>";
+const list=members.filter(m=>{
+const match=(m.full_name+" "+(m.phone||""))
+.toLowerCase().includes(search);
+
+const statusMatch=
+filter==="all" ||
+(filter==="paid" && m.fee_status==="paid") ||
+(filter==="pending" && m.fee_status==="pending") ||
+(filter==="active" && m.status==="active") ||
+(filter==="inactive" && m.status==="inactive");
+
+return match && statusMatch;
+});
+
+$("members").innerHTML=list.map(m=>`
+<div class="member">
+<strong>${safe(m.full_name)}</strong>
+<p>Phone: ${safe(m.phone)}</p>
+<p>Monthly Fee: ₹${Number(m.monthly_fee)}</p>
+<p>Joining: ${safe(m.joining_date)}</p>
+<p>Due Date: ${safe(m.fee_due_date)}</p>
+<p class="${m.fee_status==="paid"?"tag":"pending"}">
+Fee: ${safe((m.fee_status||"pending").toUpperCase())}
+</p>
+<p>Status: ${safe(m.status)}</p>
+
+<div class="actions">
+<button onclick="editMember('${m.id}')">Edit</button>
+<button class="secondary"
+onclick="recordPayment('${m.id}')">Record Payment</button>
+<button class="secondary"
+onclick="markAttendance('${m.id}')">Attendance</button>
+<button class="secondary"
+onclick="reminder('${m.id}')">WhatsApp</button>
+<button class="danger"
+onclick="deactivate('${m.id}')">Deactivate</button>
+</div>
+</div>
+`).join("") || "<p>No members found.</p>";
 }
 
-function escapeHTML(value){
- return String(value).replace(/[&<>"']/g,c=>({
-  "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
- })[c]);
+async function saveMember(){
+const name=$("name").value.trim();
+const phone=$("phone").value.trim();
+const fee=Number($("fee").value);
+const joining=$("joining").value;
+const due=$("due").value;
+
+if(!name || !phone || !fee || !joining || !due){
+alert("Please fill all details");
+return;
 }
 
-render();
-</script>
- <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+if(!/^[0-9]{10}$/.test(phone)){
+alert("Enter a valid 10-digit phone number");
+return;
+}
 
-<script>
-const SUPABASE_URL = "https://bllnupeyhecsnsamccuc.supabase.co";
+if(!Number.isFinite(fee)||fee<=0){
+alert("Enter a valid monthly fee");
+return;
+}
 
-const SUPABASE_KEY = "sb_publishable_2KdgSw9njxdosSsSD4xfQA_RKBxo8WB";
+if(due<joining){
+alert("Due date cannot be before joining date");
+return;
+}
 
-const supabaseClient = window.supabase.createClient(
-    SUPABASE_URL,
-    SUPABASE_KEY
+const record={
+full_name:name,
+phone:phone,
+monthly_fee:fee,
+joining_date:joining,
+fee_due_date:due
+};
+
+let result;
+
+if(editingId){
+result=await db.from("gym_members")
+.update(record)
+.eq("id",editingId);
+}else{
+record.owner_id=currentUser.id;
+record.status="active";
+record.fee_status="pending";
+
+result=await db.from("gym_members")
+.insert(record);
+}
+
+if(result.error){
+alert("Save failed: "+result.error.message);
+return;
+}
+
+alert(editingId?"Member updated!":"Member added!");
+resetForm();
+await loadAll();
+}
+
+function editMember(id){
+const m=members.find(x=>x.id===id);
+if(!m)return;
+
+editingId=id;
+$("name").value=m.full_name;
+$("phone").value=m.phone;
+$("fee").value=m.monthly_fee;
+$("joining").value=m.joining_date;
+$("due").value=m.fee_due_date||"";
+
+$("formTitle").innerText="Edit Member";
+$("saveBtn").innerText="Update Member";
+$("cancelEdit").classList.remove("hidden");
+window.scrollTo({top:0,behavior:"smooth"});
+}
+
+function resetForm(){
+editingId=null;
+["name","phone","fee","joining","due"].forEach(id=>{
+$(id).value="";
+});
+$("formTitle").innerText="Add New Member";
+$("saveBtn").innerText="+ Add Member";
+$("cancelEdit").classList.add("hidden");
+}
+
+async function deactivate(id){
+if(!confirm("Deactivate this member?"))return;
+
+const {error}=await db.from("gym_members")
+.update({status:"inactive"}).eq("id",id);
+
+if(error){
+alert("Error: "+error.message);
+return;
+}
+
+await loadAll();
+}
+
+async function recordPayment(id){
+const m=members.find(x=>x.id===id);
+if(!m)return;
+
+const amount=Number(prompt(
+"Enter payment amount. Monthly fee: ₹"+m.monthly_fee
+));
+
+if(!Number.isFinite(amount)||amount<=0){
+alert("Invalid payment amount");
+return;
+}
+
+const method=prompt("Payment method: cash, upi, card, bank","cash");
+if(!["cash","upi","card","bank"].includes(method)){
+alert("Invalid payment method");
+return;
+}
+
+const {error}=await db.from("gym_payments").insert({
+owner_id:currentUser.id,
+member_id:id,
+amount:amount,
+payment_method:method
+});
+
+if(error){
+alert("Payment failed: "+error.message);
+return;
+}
+
+if(amount>=Number(m.monthly_fee)){
+const {error:updateError}=await db.from("gym_members")
+.update({fee_status:"paid"}).eq("id",id);
+
+if(updateError){
+alert("Payment saved, but fee status update failed. Please check it.");
+await loadAll();
+return;
+}
+}
+
+alert("Payment recorded successfully!");
+await loadAll();
+}
+
+let paymentsTotal=0;
+
+async function loadPayments(){
+const {data,error}=await db.from("gym_payments")
+.select("*,gym_members(full_name)")
+.order("payment_date",{ascending:false})
+.limit(30);
+
+if(error){
+$("payments").innerText="Payment loading error: "+error.message;
+return;
+}
+
+paymentsTotal=(data||[]).reduce((s,p)=>s+Number(p.amount),0);
+$("collection").innerText="₹"+paymentsTotal;
+
+$("payments").innerHTML=(data||[]).map(p=>`
+<div class="member">
+<strong>${safe(p.gym_members?.full_name||"Member")}</strong>
+<p>Amount: ₹${Number(p.amount)}</p>
+<p>Date: ${safe(p.payment_date)}</p>
+<p>Method: ${safe(p.payment_method)}</p>
+</div>
+`).join("")||"<p>No payments yet.</p>";
+}
+
+async function markAttendance(id){
+const {error}=await db.from("gym_attendance").insert({
+owner_id:currentUser.id,
+member_id:id
+});
+
+if(error){
+alert(error.code==="23505"?
+"Attendance already marked today.":
+"Attendance error: "+error.message);
+return;
+}
+
+alert("Attendance marked!");
+await loadAttendance();
+}
+
+async function loadAttendance(){
+const today=new Date().toLocaleDateString("en-CA");
+
+const {data,error}=await db.from("gym_attendance")
+.select("*,gym_members(full_name)")
+.eq("attendance_date",today)
+.order("check_in",{ascending:false});
+
+if(error){
+$("attendance").innerText="Attendance error: "+error.message;
+return;
+}
+
+$("attendanceCount").innerText=(data||[]).length;
+
+$("attendance").innerHTML=(data||[]).map(a=>`
+<div class="member">
+<strong>${safe(a.gym_members?.full_name||"Member")}</strong>
+<p>Check-in: ${new Date(a.check_in).toLocaleTimeString()}</p>
+</div>
+`).join("")||"<p>No attendance yet.</p>";
+}
+
+function reminder(id){
+const m=members.find(x=>x.id===id);
+if(!m)return;
+
+const message=encodeURIComponent(
+"Hello "+m.full_name+
+", your gym fee of ₹"+m.monthly_fee+
+" is "+m.fee_status+
+". Due date: "+m.fee_due_date+
+". THE FITNESS CLUB"
 );
 
-console.log("Supabase connected!");
+window.open("https://wa.me/91"+m.phone+
+"?text="+message,"_blank");
+}
+
+// Restore existing login session
+db.auth.getSession().then(async ({data,error})=>{
+if(error){
+console.error(error);
+return;
+}
+if(data.session){
+currentUser=data.session.user;
+await showDashboard();
+}
+});
+
+db.auth.onAuthStateChange((event,session)=>{
+if(event==="SIGNED_OUT"){
+currentUser=null;
+$("dashboard").classList.add("hidden");
+$("loginBox").classList.remove("hidden");
+}
+});
 </script>
 </body>
 </html>
-
