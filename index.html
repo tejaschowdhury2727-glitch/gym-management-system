@@ -199,6 +199,20 @@ function escapeHTML(value){
 
 render();
 </script>
+ <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<script>
+const SUPABASE_URL = "https://bllnupeyhecsnsamccuc.supabase.co";
+
+const SUPABASE_KEY = "sb_publishable_2KdgSw9njxdosSsSD4xfQA_RKBxo8WB";
+
+const supabaseClient = window.supabase.createClient(
+    SUPABASE_URL,
+    SUPABASE_KEY
+);
+
+console.log("Supabase connected!");
+</script>
 </body>
 </html>
 
