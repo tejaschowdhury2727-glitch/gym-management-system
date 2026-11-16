@@ -1,1 +1,204 @@
 
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>THE FITNESS CLUB</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#101010;color:white;font-family:Arial,sans-serif}
+header{background:#1b1b1b;padding:22px;border-bottom:2px solid #e63939}
+header h2{margin:0;color:#ff4545;letter-spacing:2px}
+header p{margin:7px 0 0;color:#aaa;font-size:13px}
+main{padding:18px;max-width:1000px;margin:auto}
+h3{color:#ff4545}
+.stats{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+.card{background:#202020;padding:17px;border-radius:10px;border:1px solid #333}
+.card p{color:#aaa;margin:0}
+.card h2{margin:10px 0 0}
+input,select,button{width:100%;padding:12px;margin:6px 0;border-radius:7px;border:1px solid #444;font-size:15px}
+input,select{background:#202020;color:white}
+button{background:#e63939;color:white;border:0;font-weight:bold;cursor:pointer}
+button.secondary{background:#333}
+button.danger{background:#8e2424}
+.member{background:#202020;padding:14px;margin:10px 0;border-radius:9px;border-left:3px solid #e63939}
+.member p{color:#bbb;margin:7px 0}
+.tag{color:#62df8c;font-weight:bold}
+.pending{color:#ff7777;font-weight:bold}
+.section{margin-top:25px}
+</style>
+</head>
+<body>
+
+<header>
+<h2>THE FITNESS CLUB</h2>
+<p>GYM MANAGEMENT SYSTEM</p>
+</header>
+
+<main>
+
+<h3>Dashboard</h3>
+<div class="stats">
+<div class="card">
+<p>Total Members</p>
+<h2 id="total">0</h2>
+</div>
+<div class="card">
+<p>Fees Paid</p>
+<h2 id="paid">0</h2>
+</div>
+<div class="card">
+<p>Fees Pending</p>
+<h2 id="pending">0</h2>
+</div>
+<div class="card">
+<p>Total Fees Collected</p>
+<h2 id="collection">₹0</h2>
+</div>
+</div>
+
+<div class="section">
+<h3>Add New Member</h3>
+<input id="name" placeholder="Member Name">
+<input id="phone" placeholder="Phone Number" type="tel">
+<input id="plan" placeholder="Monthly Fee (₹)" type="number">
+<label>Joining Date</label>
+<input id="joining" type="date">
+<label>Fee Due Date</label>
+<input id="due" type="date">
+<button onclick="addMember()">+ Add Member</button>
+</div>
+
+<div class="section">
+<h3>Member Records</h3>
+<input id="search" placeholder="Search member..." oninput="render()">
+<select id="filter" onchange="render()">
+<option value="all">All Members</option>
+<option value="paid">Fees Paid</option>
+<option value="pending">Fees Pending</option>
+</select>
+<div id="members"></div>
+</div>
+
+</main>
+
+<script>
+let members = JSON.parse(localStorage.getItem("gymMembers") || "[]");
+
+function save(){
+ localStorage.setItem("gymMembers",JSON.stringify(members));
+ render();
+}
+
+function addMember(){
+ const name=document.getElementById("name").value.trim();
+ const phone=document.getElementById("phone").value.trim();
+ const fee=Number(document.getElementById("plan").value);
+ const joining=document.getElementById("joining").value;
+ const due=document.getElementById("due").value;
+
+ if(!name || !phone || !fee || !joining || !due){
+  alert("Please fill all details");
+  return;
+ }
+ if(!/^[0-9]{10}$/.test(phone)){
+  alert("Enter a valid 10-digit phone number");
+  return;
+ }
+ if(fee<=0 || !Number.isFinite(fee)){
+  alert("Enter a valid fee");
+  return;
+ }
+ if(due<joining){
+  alert("Due date cannot be before joining date");
+  return;
+ }
+
+ members.push({
+  id:Date.now(),
+  name,phone,fee,joining,due,
+  status:"pending"
+ });
+
+ save();
+ ["name","phone","plan","joining","due"].forEach(id=>{
+  document.getElementById(id).value="";
+ });
+ alert("Member added successfully!");
+}
+
+function togglePayment(id){
+ const m=members.find(x=>x.id===id);
+ if(!m)return;
+ m.status=m.status==="paid"?"pending":"paid";
+ save();
+}
+
+function removeMember(id){
+ if(!confirm("Are you sure you want to remove this member?"))return;
+ members=members.filter(m=>m.id!==id);
+ save();
+}
+
+function reminder(m){
+ const msg=encodeURIComponent(
+  "Hello "+m.name+", your gym fee of ₹"+m.fee+
+  " is pending. Due date: "+m.due+
+  ". Please contact THE FITNESS CLUB."
+ );
+ window.open("https://wa.me/91"+m.phone+"?text="+msg,"_blank");
+}
+
+function render(){
+ const search=document.getElementById("search").value.toLowerCase();
+ const filter=document.getElementById("filter").value;
+
+ document.getElementById("total").innerText=members.length;
+ document.getElementById("paid").innerText=members.filter(m=>m.status==="paid").length;
+ document.getElementById("pending").innerText=members.filter(m=>m.status==="pending").length;
+
+ const collection=members
+ .filter(m=>m.status==="paid")
+ .reduce((sum,m)=>sum+m.fee,0);
+ document.getElementById("collection").innerText="₹"+collection;
+
+ const list=members.filter(m=>
+  m.name.toLowerCase().includes(search) &&
+  (filter==="all" || m.status===filter)
+ );
+
+ document.getElementById("members").innerHTML=list.map(m=>`
+ <div class="member">
+  <strong>${escapeHTML(m.name)}</strong>
+  <p>Phone: ${escapeHTML(m.phone)}</p>
+  <p>Monthly Fee: ₹${m.fee}</p>
+  <p>Joining: ${escapeHTML(m.joining)}</p>
+  <p>Due Date: ${escapeHTML(m.due)}</p>
+  <p class="${m.status==="paid"?"tag":"pending"}">
+   ${m.status==="paid"?"PAID":"PENDING"}
+  </p>
+  <button onclick="togglePayment(${m.id})">
+   Mark ${m.status==="paid"?"Pending":"Paid"}
+  </button>
+  <button class="secondary" onclick='reminder(${JSON.stringify(m).replace(/'/g,"&#39;")})'>
+   WhatsApp Reminder
+  </button>
+  <button class="danger" onclick="removeMember(${m.id})">
+   Remove Member
+  </button>
+ </div>
+ `).join("") || "<p>No members found.</p>";
+}
+
+function escapeHTML(value){
+ return String(value).replace(/[&<>"']/g,c=>({
+  "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
+ })[c]);
+}
+
+render();
+</script>
+</body>
+</html>
+
