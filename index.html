@@ -17,9 +17,12 @@ main{padding:18px;max-width:1000px;margin:auto}
 h3{color:#ff4545}
 input,select,button{width:100%;padding:12px;margin:6px 0;border-radius:7px;border:1px solid #444;font-size:15px}
 input,select{background:#202020;color:white}
+input[readonly]{opacity:.7}
 button{background:#e63939;color:white;border:0;font-weight:bold;cursor:pointer}
+button:disabled{opacity:.5;cursor:not-allowed}
 .secondary{background:#333}
 .danger{background:#8e2424}
+.success{background:#247a45}
 .card,.member{background:#202020;padding:15px;border-radius:10px;border:1px solid #333;margin:10px 0}
 .stats{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
 .card p{color:#aaa;margin:0}
@@ -31,10 +34,12 @@ button{background:#e63939;color:white;border:0;font-weight:bold;cursor:pointer}
 .hidden{display:none}
 .actions{display:grid;grid-template-columns:1fr 1fr;gap:5px}
 small{color:#aaa}
+label{display:block;margin-top:10px;color:#bbb}
 </style>
 </head>
 
 <body>
+
 <header>
 <h2>THE FITNESS CLUB</h2>
 <p>GYM MANAGEMENT SYSTEM</p>
@@ -42,7 +47,6 @@ small{color:#aaa}
 
 <main>
 
-<!-- LOGIN -->
 <section id="loginBox">
 <h3>Owner Login</h3>
 <p><small>Login using your registered gym owner account.</small></p>
@@ -52,7 +56,6 @@ small{color:#aaa}
 <p id="loginMessage"></p>
 </section>
 
-<!-- DASHBOARD -->
 <section id="dashboard" class="hidden">
 
 <div style="display:flex;justify-content:space-between;align-items:center">
@@ -71,6 +74,7 @@ small{color:#aaa}
 </div>
 
 <!-- ADD MEMBER -->
+
 <div class="section">
 <h3 id="formTitle">Add New Member</h3>
 
@@ -79,18 +83,20 @@ small{color:#aaa}
 <input id="fee" type="number" min="1" placeholder="Monthly Fee (₹)">
 
 <label>Joining Date</label>
-<input id="joining" type="date">
+<input id="joining" type="date" onchange="updateDuePreview()">
 
-<label>Fee Due Date</label>
-<input id="due" type="date">
+<label>Next Fee Due Date (Automatic)</label>
+<input id="due" type="date" readonly>
 
 <button id="saveBtn" onclick="saveMember()">+ Add Member</button>
 <button id="cancelEdit" class="secondary hidden" onclick="resetForm()">Cancel Edit</button>
 </div>
 
 <!-- MEMBER RECORDS -->
+
 <div class="section">
 <h3>Member Records</h3>
+
 <input id="search" placeholder="Search member..." oninput="render()">
 
 <select id="filter" onchange="render()">
@@ -105,12 +111,14 @@ small{color:#aaa}
 </div>
 
 <!-- PAYMENT HISTORY -->
+
 <div class="section">
-<h3>Recent Payment History</h3>
+<h3>Payment History</h3>
 <div id="payments">Loading...</div>
 </div>
 
 <!-- ATTENDANCE -->
+
 <div class="section">
 <h3>Today's Attendance</h3>
 <h2 id="attendanceCount">0</h2>
@@ -121,6 +129,7 @@ small{color:#aaa}
 </main>
 
 <script>
+
 const SUPABASE_URL =
 "https://bllnupeyhecsnsamccuc.supabase.co";
 
@@ -131,24 +140,85 @@ const db = window.supabase.createClient(
 SUPABASE_URL,SUPABASE_KEY
 );
 
-let currentUser = null;
-let members = [];
-let editingId = null;
+let currentUser=null;
+let members=[];
+let editingId=null;
+let paymentsTotal=0;
 
-const $ = id => document.getElementById(id);
+const $=id=>document.getElementById(id);
 
 function safe(value){
-return String(value ?? "").replace(/[&<>"']/g,c=>({
+return String(value??"").replace(/[&<>"']/g,c=>({
 "&":"&amp;","<":"&lt;",">":"&gt;",
 '"':"&quot;","'":"&#39;"
 })[c]);
 }
 
+function todayString(){
+const d=new Date();
+return [
+d.getFullYear(),
+String(d.getMonth()+1).padStart(2,"0"),
+String(d.getDate()).padStart(2,"0")
+].join("-");
+}
+
+// MONTHLY BILLING SYSTEM
+
+function billingDate(joiningDate,monthOffset){
+const [y,m,d]=joiningDate.split("-").map(Number);
+
+const index=y*12+(m-1)+monthOffset;
+const year=Math.floor(index/12);
+const month=index%12+1;
+
+const lastDay=new Date(Date.UTC(year,month,0)).getUTCDate();
+const day=Math.min(d,lastDay);
+
+return `${year}-${String(month).padStart(2,"0")}-${String(day).padStart(2,"0")}`;
+}
+
+function getCurrentBillingCycle(joiningDate){
+
+const today=todayString();
+let offset=0;
+
+while(billingDate(joiningDate,offset+1)<=today){
+offset++;
+}
+
+return {
+start:billingDate(joiningDate,offset),
+due:billingDate(joiningDate,offset+1)
+};
+}
+
+function getFeeStatus(member){
+
+const cycle=getCurrentBillingCycle(member.joining_date);
+
+return member.fee_status==="paid" &&
+member.fee_cycle_start===cycle.start
+?"paid":"pending";
+}
+
+function updateDuePreview(){
+
+const joining=$("joining").value;
+
+$("due").value=joining
+?getCurrentBillingCycle(joining).due
+:"";
+}
+
+// LOGIN
+
 async function login(){
+
 const email=$("email").value.trim();
 const password=$("password").value;
 
-if(!email || !password){
+if(!email||!password){
 alert("Enter email and password");
 return;
 }
@@ -172,22 +242,43 @@ await showDashboard();
 }
 
 async function logout(){
-await db.auth.signOut();
+
+const {error}=await db.auth.signOut();
+
+if(error){
+alert(error.message);
+return;
+}
+
 currentUser=null;
+members=[];
+
 $("dashboard").classList.add("hidden");
 $("loginBox").classList.remove("hidden");
 $("password").value="";
 }
 
+// DASHBOARD
+
 async function showDashboard(){
+
+if(!currentUser)return;
+
 $("loginBox").classList.add("hidden");
 $("dashboard").classList.remove("hidden");
+
 await loadAll();
 }
 
+// LOAD DATA
+
 async function loadAll(){
+
+if(!currentUser)return;
+
 const {data,error}=await db.from("gym_members")
 .select("*")
+.eq("owner_id",currentUser.id)
 .order("created_at",{ascending:false});
 
 if(error){
@@ -195,77 +286,119 @@ alert("Member loading error: "+error.message);
 return;
 }
 
-members=data || [];
+members=data||[];
+
 render();
+
 await loadPayments();
 await loadAttendance();
 }
 
+// MEMBER DISPLAY
+
 function render(){
+
 const search=$("search").value.toLowerCase();
 const filter=$("filter").value;
 
 const active=members.filter(m=>m.status==="active");
-const paid=members.filter(m=>m.fee_status==="paid");
-const pending=members.filter(m=>m.fee_status==="pending");
+
+const paid=members.filter(m=>getFeeStatus(m)==="paid");
+
+const pending=members.filter(m=>getFeeStatus(m)==="pending");
 
 $("total").innerText=members.length;
 $("active").innerText=active.length;
 $("paid").innerText=paid.length;
 $("pending").innerText=pending.length;
-
-const collection=paymentsTotal;
-$("collection").innerText="₹"+collection;
+$("collection").innerText="₹"+paymentsTotal;
 
 const list=members.filter(m=>{
+
 const match=(m.full_name+" "+(m.phone||""))
 .toLowerCase().includes(search);
 
-const statusMatch=
-filter==="all" ||
-(filter==="paid" && m.fee_status==="paid") ||
-(filter==="pending" && m.fee_status==="pending") ||
-(filter==="active" && m.status==="active") ||
-(filter==="inactive" && m.status==="inactive");
+const feeStatus=getFeeStatus(m);
 
-return match && statusMatch;
+const statusMatch=
+filter==="all"||
+(filter==="paid"&&feeStatus==="paid")||
+(filter==="pending"&&feeStatus==="pending")||
+(filter==="active"&&m.status==="active")||
+(filter==="inactive"&&m.status==="inactive");
+
+return match&&statusMatch;
 });
 
-$("members").innerHTML=list.map(m=>`
+$("members").innerHTML=list.map(m=>{
+
+const feeStatus=getFeeStatus(m);
+const cycle=getCurrentBillingCycle(m.joining_date);
+
+return `
 <div class="member">
+
 <strong>${safe(m.full_name)}</strong>
+
 <p>Phone: ${safe(m.phone)}</p>
 <p>Monthly Fee: ₹${Number(m.monthly_fee)}</p>
 <p>Joining: ${safe(m.joining_date)}</p>
-<p>Due Date: ${safe(m.fee_due_date)}</p>
-<p class="${m.fee_status==="paid"?"tag":"pending"}">
-Fee: ${safe((m.fee_status||"pending").toUpperCase())}
+<p>Next Due Date: ${safe(cycle.due)}</p>
+
+<p class="${feeStatus==="paid"?"tag":"pending"}">
+Fee: ${feeStatus.toUpperCase()}
 </p>
+
 <p>Status: ${safe(m.status)}</p>
 
 <div class="actions">
+
 <button onclick="editMember('${m.id}')">Edit</button>
+
 <button class="secondary"
-onclick="recordPayment('${m.id}')">Record Payment</button>
+onclick="recordPayment('${m.id}')">
+Record Payment
+</button>
+
+<button class="${feeStatus==="paid"?"secondary":"success"}"
+${feeStatus==="paid"?"disabled":""}
+onclick="markPaid('${m.id}')">
+${feeStatus==="paid"?"Paid":"Mark as Paid"}
+</button>
+
 <button class="secondary"
-onclick="markAttendance('${m.id}')">Attendance</button>
+onclick="markAttendance('${m.id}')">
+Attendance
+</button>
+
 <button class="secondary"
-onclick="reminder('${m.id}')">WhatsApp</button>
+onclick="reminder('${m.id}')">
+WhatsApp
+</button>
+
 <button class="danger"
-onclick="deactivate('${m.id}')">Deactivate</button>
+onclick="deactivate('${m.id}')">
+Deactivate
+</button>
+
 </div>
 </div>
-`).join("") || "<p>No members found.</p>";
+`;
+
+}).join("")||"<p>No members found.</p>";
+
 }
 
+// ADD / EDIT MEMBER
+
 async function saveMember(){
+
 const name=$("name").value.trim();
 const phone=$("phone").value.trim();
 const fee=Number($("fee").value);
 const joining=$("joining").value;
-const due=$("due").value;
 
-if(!name || !phone || !fee || !joining || !due){
+if(!name||!phone||!fee||!joining){
 alert("Please fill all details");
 return;
 }
@@ -280,29 +413,44 @@ alert("Enter a valid monthly fee");
 return;
 }
 
-if(due<joining){
-alert("Due date cannot be before joining date");
+if(joining>todayString()){
+alert("Joining date cannot be in the future");
 return;
 }
+
+const cycle=getCurrentBillingCycle(joining);
 
 const record={
 full_name:name,
 phone:phone,
 monthly_fee:fee,
 joining_date:joining,
-fee_due_date:due
+fee_due_date:cycle.due
 };
 
 let result;
 
 if(editingId){
+
+const old=members.find(m=>m.id===editingId);
+
+if(old&&old.joining_date!==joining){
+
+record.fee_status="pending";
+record.fee_cycle_start=null;
+}
+
 result=await db.from("gym_members")
 .update(record)
-.eq("id",editingId);
+.eq("id",editingId)
+.eq("owner_id",currentUser.id);
+
 }else{
+
 record.owner_id=currentUser.id;
 record.status="active";
 record.fee_status="pending";
+record.fee_cycle_start=null;
 
 result=await db.from("gym_members")
 .insert(record);
@@ -314,42 +462,88 @@ return;
 }
 
 alert(editingId?"Member updated!":"Member added!");
+
 resetForm();
 await loadAll();
 }
 
 function editMember(id){
+
 const m=members.find(x=>x.id===id);
 if(!m)return;
 
 editingId=id;
+
 $("name").value=m.full_name;
-$("phone").value=m.phone;
+$("phone").value=m.phone||"";
 $("fee").value=m.monthly_fee;
 $("joining").value=m.joining_date;
-$("due").value=m.fee_due_date||"";
+
+updateDuePreview();
 
 $("formTitle").innerText="Edit Member";
 $("saveBtn").innerText="Update Member";
 $("cancelEdit").classList.remove("hidden");
+
 window.scrollTo({top:0,behavior:"smooth"});
 }
 
 function resetForm(){
+
 editingId=null;
+
 ["name","phone","fee","joining","due"].forEach(id=>{
 $(id).value="";
 });
+
 $("formTitle").innerText="Add New Member";
 $("saveBtn").innerText="+ Add Member";
 $("cancelEdit").classList.add("hidden");
 }
 
+// MANUAL PAID
+
+async function markPaid(id){
+
+const m=members.find(x=>x.id===id);
+if(!m)return;
+
+const cycle=getCurrentBillingCycle(m.joining_date);
+
+if(!confirm(
+"Mark ₹"+m.monthly_fee+
+" monthly fee as PAID for this billing cycle?"
+))return;
+
+const {error}=await db.from("gym_members")
+.update({
+fee_status:"paid",
+fee_cycle_start:cycle.start,
+fee_due_date:cycle.due
+})
+.eq("id",id)
+.eq("owner_id",currentUser.id);
+
+if(error){
+alert("Status update failed: "+error.message);
+return;
+}
+
+alert("Member marked as PAID!");
+
+await loadAll();
+}
+
+// DEACTIVATE
+
 async function deactivate(id){
+
 if(!confirm("Deactivate this member?"))return;
 
 const {error}=await db.from("gym_members")
-.update({status:"inactive"}).eq("id",id);
+.update({status:"inactive"})
+.eq("id",id)
+.eq("owner_id",currentUser.id);
 
 if(error){
 alert("Error: "+error.message);
@@ -359,7 +553,11 @@ return;
 await loadAll();
 }
 
+// RECORD PAYMENT
+// Recording a payment does NOT automatically mark Paid.
+
 async function recordPayment(id){
+
 const m=members.find(x=>x.id===id);
 if(!m)return;
 
@@ -372,17 +570,32 @@ alert("Invalid payment amount");
 return;
 }
 
-const method=prompt("Payment method: cash, upi, card, bank","cash");
-if(!["cash","upi","card","bank"].includes(method)){
+const method=prompt(
+"Payment method: cash, upi, card, bank",
+"cash"
+);
+
+if(method===null)return;
+
+const paymentMethod=method.trim().toLowerCase();
+
+if(!["cash","upi","card","bank"].includes(paymentMethod)){
 alert("Invalid payment method");
 return;
 }
 
+const cycle=getCurrentBillingCycle(m.joining_date);
+
 const {error}=await db.from("gym_payments").insert({
+
 owner_id:currentUser.id,
 member_id:id,
 amount:amount,
-payment_method:method
+payment_method:paymentMethod,
+payment_date:todayString(),
+billing_period_start:cycle.start,
+billing_period_end:cycle.due
+
 });
 
 if(error){
@@ -390,69 +603,116 @@ alert("Payment failed: "+error.message);
 return;
 }
 
-if(amount>=Number(m.monthly_fee)){
-const {error:updateError}=await db.from("gym_members")
-.update({fee_status:"paid"}).eq("id",id);
+alert("Payment recorded! Fee status has NOT been changed.");
 
-if(updateError){
-alert("Payment saved, but fee status update failed. Please check it.");
-await loadAll();
-return;
-}
-}
-
-alert("Payment recorded successfully!");
 await loadAll();
 }
 
-let paymentsTotal=0;
+// PAYMENT HISTORY AND TOTAL COLLECTION
 
 async function loadPayments(){
+
+const {data:totalData,error:totalError}=await db
+.from("gym_payments")
+.select("amount,created_at")
+.eq("owner_id",currentUser.id)
+.order("created_at",{ascending:true})
+.range(0,999);
+
+if(totalError){
+$("payments").innerText="Payment loading error: "+totalError.message;
+return;
+}
+
+let allPayments=totalData||[];
+
+let offset=1000;
+
+while(totalData&&totalData.length===1000){
+
+const {data,error}=await db.from("gym_payments")
+.select("amount,created_at")
+.eq("owner_id",currentUser.id)
+.order("created_at",{ascending:true})
+.range(offset,offset+999);
+
+if(error){
+$("payments").innerText="Collection loading error: "+error.message;
+return;
+}
+
+if(!data||data.length===0)break;
+
+allPayments=allPayments.concat(data);
+offset+=1000;
+
+if(data.length<1000)break;
+}
+
+paymentsTotal=allPayments.reduce(
+(sum,p)=>sum+Number(p.amount),0
+);
+
+$("collection").innerText="₹"+paymentsTotal;
+
 const {data,error}=await db.from("gym_payments")
 .select("*,gym_members(full_name)")
+.eq("owner_id",currentUser.id)
 .order("payment_date",{ascending:false})
 .limit(30);
 
 if(error){
-$("payments").innerText="Payment loading error: "+error.message;
+$("payments").innerText="Payment history error: "+error.message;
 return;
 }
 
-paymentsTotal=(data||[]).reduce((s,p)=>s+Number(p.amount),0);
-$("collection").innerText="₹"+paymentsTotal;
-
 $("payments").innerHTML=(data||[]).map(p=>`
+
 <div class="member">
 <strong>${safe(p.gym_members?.full_name||"Member")}</strong>
 <p>Amount: ₹${Number(p.amount)}</p>
 <p>Date: ${safe(p.payment_date)}</p>
 <p>Method: ${safe(p.payment_method)}</p>
+<p>Billing Period: ${safe(p.billing_period_start)} to ${safe(p.billing_period_end)}</p>
 </div>
+
 `).join("")||"<p>No payments yet.</p>";
+
+render();
 }
 
+// ATTENDANCE
+
 async function markAttendance(id){
+
 const {error}=await db.from("gym_attendance").insert({
+
 owner_id:currentUser.id,
 member_id:id
+
 });
 
 if(error){
+
 alert(error.code==="23505"?
 "Attendance already marked today.":
 "Attendance error: "+error.message);
+
 return;
 }
 
 alert("Attendance marked!");
+
 await loadAttendance();
 }
 
 async function loadAttendance(){
-const today=new Date().toLocaleDateString("en-CA");
+
+const today=todayString();
 
 const {data,error}=await db.from("gym_attendance")
 .select("*,gym_members(full_name)")
+.eq("owner_id",currentUser.id)
 .eq("attendance_date",today)
 .order("check_in",{ascending:false});
 
@@ -464,48 +724,80 @@ return;
 $("attendanceCount").innerText=(data||[]).length;
 
 $("attendance").innerHTML=(data||[]).map(a=>`
+
 <div class="member">
 <strong>${safe(a.gym_members?.full_name||"Member")}</strong>
 <p>Check-in: ${new Date(a.check_in).toLocaleTimeString()}</p>
 </div>
+
 `).join("")||"<p>No attendance yet.</p>";
+
 }
 
+// WHATSAPP REMINDER
+
 function reminder(id){
+
 const m=members.find(x=>x.id===id);
 if(!m)return;
 
-const message=encodeURIComponent(
-"Hello "+m.full_name+
-", your gym fee of ₹"+m.monthly_fee+
-" is "+m.fee_status+
-". Due date: "+m.fee_due_date+
-". THE FITNESS CLUB"
-);
-
-window.open("https://wa.me/91"+m.phone+
-"?text="+message,"_blank");
+if(!m.phone){
+alert("Member phone number missing");
+return;
 }
 
-// Restore existing login session
-db.auth.getSession().then(async ({data,error})=>{
+const status=getFeeStatus(m);
+const cycle=getCurrentBillingCycle(m.joining_date);
+
+const message=encodeURIComponent(
+
+"Hello "+m.full_name+
+", your gym fee of ₹"+m.monthly_fee+
+" is "+status+
+". Due date: "+cycle.due+
+". THE FITNESS CLUB"
+
+);
+
+window.open(
+"https://wa.me/91"+m.phone+"?text="+message,
+"_blank"
+);
+
+}
+
+// RESTORE LOGIN SESSION
+
+db.auth.getSession().then(async({data,error})=>{
+
 if(error){
 console.error(error);
 return;
 }
+
 if(data.session){
+
 currentUser=data.session.user;
 await showDashboard();
+
 }
+
 });
 
 db.auth.onAuthStateChange((event,session)=>{
+
 if(event==="SIGNED_OUT"){
+
 currentUser=null;
+members=[];
+
 $("dashboard").classList.add("hidden");
 $("loginBox").classList.remove("hidden");
+
 }
+
 });
+
 </script>
 </body>
 </html>
