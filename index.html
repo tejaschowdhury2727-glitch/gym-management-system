@@ -8,796 +8,889 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <style>
+:root{
+  --bg:#101010;--panel:#1c1c1c;--panel2:#242424;
+  --red:#e63946;--text:#fff;--muted:#aaa;
+  --green:#42c77a;--border:#333;
+}
 *{box-sizing:border-box}
-body{margin:0;background:#101010;color:white;font-family:Arial,sans-serif}
-header{background:#1b1b1b;padding:20px;border-bottom:2px solid #e63939}
-header h2{margin:0;color:#ff4545;letter-spacing:2px}
-header p{color:#aaa;font-size:13px}
-main{padding:18px;max-width:1000px;margin:auto}
-h3{color:#ff4545}
-input,select,button{width:100%;padding:12px;margin:6px 0;border-radius:7px;border:1px solid #444;font-size:15px}
-input,select{background:#202020;color:white}
-input[readonly]{opacity:.7}
-button{background:#e63939;color:white;border:0;font-weight:bold;cursor:pointer}
+body{margin:0;background:var(--bg);color:var(--text);
+font-family:Arial,sans-serif}
+header{background:#191919;padding:18px 20px;
+border-bottom:2px solid var(--red)}
+header h2{margin:0;color:#ff4b55;letter-spacing:2px}
+header p{margin:6px 0 0;color:var(--muted);font-size:12px}
+main{max-width:1100px;margin:auto;padding:18px}
+h3{color:#ff505a}
+button,input,select,textarea{
+  width:100%;padding:12px;margin:5px 0;
+  border-radius:8px;border:1px solid #414141;font-size:15px
+}
+input,select,textarea{background:#202020;color:white}
+button{background:var(--red);color:white;border:0;
+font-weight:bold;cursor:pointer}
 button:disabled{opacity:.5;cursor:not-allowed}
-.secondary{background:#333}
-.danger{background:#8e2424}
-.success{background:#247a45}
-.card,.member{background:#202020;padding:15px;border-radius:10px;border:1px solid #333;margin:10px 0}
-.stats{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
-.card p{color:#aaa;margin:0}
-.card h2{margin-bottom:0}
-.section{margin-top:25px}
-.member p{color:#bbb;margin:8px 0}
-.tag{color:#62df8c;font-weight:bold}
+.secondary{background:#353535}
+.success{background:#237c49}
+.danger{background:#8f2929}
+.hidden{display:none!important}
+.muted{color:var(--muted)}
+.small{font-size:12px;color:var(--muted)}
+label{display:block;margin-top:10px;color:#bbb;font-size:13px}
+.card,.member,.panel{
+  background:var(--panel);border:1px solid var(--border);
+  border-radius:12px;padding:15px;margin:10px 0
+}
+.stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.stat{cursor:pointer;transition:.15s}
+.stat:active{transform:scale(.98)}
+.stat p{margin:0;color:var(--muted);font-size:13px}
+.stat h2{margin:10px 0 0;font-size:25px}
+.stat.red{border-left:4px solid var(--red)}
+.stat.green{border-left:4px solid var(--green)}
+.stat.orange{border-left:4px solid #e6a23c}
+.stat.blue{border-left:4px solid #5799e8}
+.section{margin-top:24px}
+.topbar{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.topbar button{width:auto}
+.nav{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin:15px 0}
+.nav button{font-size:12px;padding:11px 5px}
+.member strong{font-size:17px}
+.member p{color:#bbb;margin:7px 0;font-size:13px}
+.tag{color:var(--green);font-weight:bold}
 .pending{color:#ff7777;font-weight:bold}
-.hidden{display:none}
-.actions{display:grid;grid-template-columns:1fr 1fr;gap:5px}
-small{color:#aaa}
-label{display:block;margin-top:10px;color:#bbb}
+.actions{display:grid;grid-template-columns:repeat(2,1fr);gap:6px;margin-top:12px}
+.actions button{font-size:12px;padding:10px 5px}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+hr{border:0;border-top:1px solid #333;margin:15px 0}
+.badge{display:inline-block;padding:5px 9px;border-radius:20px;
+background:#333;font-size:11px}
+.empty{text-align:center;color:#888;padding:20px}
+.modal{
+  position:fixed;inset:0;background:#000c;z-index:10;
+  display:flex;align-items:center;justify-content:center;padding:15px
+}
+.modalbox{background:#1d1d1d;border:1px solid #444;
+border-radius:14px;padding:18px;width:100%;max-width:440px;
+max-height:90vh;overflow:auto}
+.modalbox h3{margin-top:0}
+.header-actions{display:flex;gap:8px}
+.header-actions button{width:auto}
+@media(min-width:700px){
+  .stats{grid-template-columns:repeat(4,1fr)}
+  .stat:last-child{grid-column:span 1}
+  .nav{grid-template-columns:repeat(5,1fr)}
+}
 </style>
 </head>
 
 <body>
 
 <header>
-<h2>THE FITNESS CLUB</h2>
-<p>GYM MANAGEMENT SYSTEM</p>
+  <h2>THE FITNESS CLUB</h2>
+  <p>GYM MANAGEMENT SYSTEM</p>
 </header>
 
 <main>
 
-<section id="loginBox">
-<h3>Owner Login</h3>
-<p><small>Login using your registered gym owner account.</small></p>
-<input id="email" type="email" placeholder="Owner Email">
-<input id="password" type="password" placeholder="Password">
-<button id="loginBtn" onclick="login()">Login</button>
-<p id="loginMessage"></p>
+<!-- LOGIN -->
+<section id="loginBox" class="panel">
+  <h3>Owner Login</h3>
+  <p class="small">Login with your registered owner account.</p>
+  <input id="email" type="email" placeholder="Owner Email">
+  <input id="password" type="password" placeholder="Password">
+  <button id="loginBtn" onclick="login()">Login</button>
+  <p id="loginMessage" class="small"></p>
 </section>
 
-<section id="dashboard" class="hidden">
+<!-- APP -->
+<section id="app" class="hidden">
 
-<div style="display:flex;justify-content:space-between;align-items:center">
-<h3>Dashboard</h3>
-<button style="width:auto;padding:10px" onclick="logout()">Logout</button>
-</div>
+  <div class="topbar">
+    <div>
+      <h3 style="margin:5px 0">Dashboard</h3>
+      <span class="small">Welcome, Gym Owner</span>
+    </div>
+    <div class="header-actions">
+      <button class="secondary" onclick="refreshAll()">Refresh</button>
+      <button class="danger" onclick="logout()">Logout</button>
+    </div>
+  </div>
 
-<div class="stats">
-<div class="card"><p>Total Members</p><h2 id="total">0</h2></div>
-<div class="card"><p>Active Members</p><h2 id="active">0</h2></div>
-<div class="card"><p>Fees Paid</p><h2 id="paid">0</h2></div>
-<div class="card"><p>Fees Pending</p><h2 id="pending">0</h2></div>
-<div class="card" style="grid-column:span 2">
-<p>Total Fees Collected</p><h2 id="collection">₹0</h2>
-</div>
-</div>
+  <!-- DASHBOARD CARDS -->
+  <div class="stats">
+    <div class="card stat red" onclick="openMembers('all')">
+      <p>Total Members</p>
+      <h2 id="totalCount">0</h2>
+      <span class="small">View all members</span>
+    </div>
 
-<!-- ADD MEMBER -->
+    <div class="card stat green" onclick="openMembers('paid')">
+      <p>Paid Members</p>
+      <h2 id="paidCount">0</h2>
+      <span class="small">View paid members</span>
+    </div>
 
-<div class="section">
-<h3 id="formTitle">Add New Member</h3>
+    <div class="card stat orange" onclick="openMembers('pending')">
+      <p>Pending Members</p>
+      <h2 id="pendingCount">0</h2>
+      <span class="small">View pending members</span>
+    </div>
 
-<input id="name" placeholder="Member Name">
-<input id="phone" type="tel" maxlength="10" placeholder="10 Digit Phone Number">
-<input id="fee" type="number" min="1" placeholder="Monthly Fee (₹)">
+    <div class="card stat blue" onclick="openCollection()">
+      <p>Collection This Month</p>
+      <h2 id="monthCollection">₹0</h2>
+      <span class="small">View transactions</span>
+    </div>
+  </div>
 
-<label>Joining Date</label>
-<input id="joining" type="date" onchange="updateDuePreview()">
+  <!-- NAVIGATION -->
+  <div class="nav">
+    <button onclick="showPage('dashboardPage')">Dashboard</button>
+    <button onclick="showPage('membersPage')">Members</button>
+    <button onclick="showPage('paymentsPage')">Payments</button>
+    <button onclick="showPage('collectionPage')">Collection</button>
+    <button onclick="exportCSV()">Export CSV</button>
+  </div>
 
-<label>Next Fee Due Date (Automatic)</label>
-<input id="due" type="date" readonly>
+  <!-- DASHBOARD PAGE -->
+  <div id="dashboardPage" class="page">
+    <div class="panel">
+      <h3>Quick Actions</h3>
+      <button onclick="newMember()">+ Add New Member</button>
+      <button class="secondary" onclick="openMembers('pending')">
+        View Pending Fees
+      </button>
+      <button class="secondary" onclick="openCollection()">
+        Monthly Collection Report
+      </button>
+    </div>
+  </div>
 
-<button id="saveBtn" onclick="saveMember()">+ Add Member</button>
-<button id="cancelEdit" class="secondary hidden" onclick="resetForm()">Cancel Edit</button>
-</div>
+  <!-- MEMBERS PAGE -->
+  <div id="membersPage" class="page hidden">
 
-<!-- MEMBER RECORDS -->
+    <div class="topbar">
+      <h3>Member Records</h3>
+      <button style="max-width:150px" onclick="newMember()">+ Add Member</button>
+    </div>
 
-<div class="section">
-<h3>Member Records</h3>
+    <input id="memberSearch" placeholder="Search by name or phone..."
+      oninput="renderMembers()">
 
-<input id="search" placeholder="Search member..." oninput="render()">
+    <select id="memberFilter" onchange="renderMembers()">
+      <option value="all">All Members</option>
+      <option value="paid">Paid Members</option>
+      <option value="pending">Pending Members</option>
+      <option value="archived">Archived Members</option>
+    </select>
 
-<select id="filter" onchange="render()">
-<option value="all">All Members</option>
-<option value="active">Active Members</option>
-<option value="inactive">Inactive Members</option>
-<option value="paid">Fees Paid</option>
-<option value="pending">Fees Pending</option>
-</select>
+    <div id="memberList">Loading...</div>
+  </div>
 
-<div id="members">Loading...</div>
-</div>
+  <!-- PAYMENTS PAGE -->
+  <div id="paymentsPage" class="page hidden">
+    <h3>Payment History</h3>
+    <p class="small">All saved transactions, including archived members.</p>
+    <input id="paymentSearch" placeholder="Search member..."
+      oninput="renderPayments()">
+    <div id="paymentList">Loading...</div>
+  </div>
 
-<!-- PAYMENT HISTORY -->
+  <!-- COLLECTION PAGE -->
+  <div id="collectionPage" class="page hidden">
+    <h3>Collection Reports</h3>
 
-<div class="section">
-<h3>Payment History</h3>
-<div id="payments">Loading...</div>
-</div>
+    <label>Select Month</label>
+    <input id="collectionMonth" type="month" onchange="renderCollection()">
 
-<!-- ATTENDANCE -->
+    <div class="card">
+      <p class="muted">Selected Month Collection</p>
+      <h2 id="selectedCollection">₹0</h2>
+    </div>
 
-<div class="section">
-<h3>Today's Attendance</h3>
-<h2 id="attendanceCount">0</h2>
-<div id="attendance">Loading...</div>
-</div>
+    <div class="card">
+      <p class="muted">All-Time Collection</p>
+      <h2 id="allTimeCollection">₹0</h2>
+    </div>
+
+    <h3>Transactions</h3>
+    <div id="collectionList"></div>
+  </div>
 
 </section>
 </main>
 
+<!-- MEMBER MODAL -->
+<div id="memberModal" class="modal hidden">
+  <div class="modalbox">
+    <h3 id="memberModalTitle">Add Member</h3>
+
+    <label>Full Name</label>
+    <input id="mName" placeholder="Member name">
+
+    <label>Phone Number</label>
+    <input id="mPhone" type="tel" maxlength="10" placeholder="10 digit phone">
+
+    <label>Monthly Fee (₹)</label>
+    <input id="mFee" type="number" min="1" placeholder="Enter fee">
+
+    <label>Joining Date</label>
+    <input id="mJoining" type="date">
+
+    <button id="memberSaveBtn" onclick="saveMember()">Save Member</button>
+    <button class="secondary" onclick="closeMemberModal()">Cancel</button>
+  </div>
+</div>
+
+<!-- PAYMENT MODAL -->
+<div id="paymentModal" class="modal hidden">
+  <div class="modalbox">
+    <h3>Record Payment</h3>
+    <div id="paymentMemberInfo" class="small"></div>
+
+    <label>Amount Received (₹)</label>
+    <input id="pAmount" type="number" min="1" placeholder="Enter actual amount received">
+
+    <label>Payment Duration</label>
+    <select id="pMonths">
+      <option value="1">1 Month</option>
+      <option value="2">2 Months</option>
+      <option value="3">3 Months</option>
+      <option value="4">4 Months</option>
+      <option value="5">5 Months</option>
+      <option value="6">6 Months</option>
+      <option value="9">9 Months</option>
+      <option value="12">12 Months</option>
+    </select>
+
+    <label>Payment Date</label>
+    <input id="pDate" type="date">
+
+    <label>Payment Method</label>
+    <select id="pMethod">
+      <option value="cash">Cash</option>
+      <option value="upi">UPI</option>
+      <option value="card">Card</option>
+      <option value="bank">Bank Transfer</option>
+    </select>
+
+    <label>Notes (Optional)</label>
+    <textarea id="pNotes" rows="2" placeholder="Optional note"></textarea>
+
+    <button id="paymentSaveBtn" onclick="savePayment()">Save Payment</button>
+    <button class="secondary" onclick="closePaymentModal()">Cancel</button>
+  </div>
+</div>
+
 <script>
+const SUPABASE_URL="https://bllnupeyhecsnsamccuc.supabase.co";
+const SUPABASE_KEY="sb_publishable_2KdgSw9njxdosSsSD4xfQA_RKBxo8WB";
 
-const SUPABASE_URL =
-"https://bllnupeyhecsnsamccuc.supabase.co";
-
-const SUPABASE_KEY =
-"sb_publishable_2KdgSw9njxdosSsSD4xfQA_RKBxo8WB";
-
-const db = window.supabase.createClient(
-SUPABASE_URL,SUPABASE_KEY
-);
+const db=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 
 let currentUser=null;
 let members=[];
+let payments=[];
 let editingId=null;
-let paymentsTotal=0;
+let paymentMemberId=null;
+let busy=false;
 
 const $=id=>document.getElementById(id);
 
-function safe(value){
-return String(value??"").replace(/[&<>"']/g,c=>({
-"&":"&amp;","<":"&lt;",">":"&gt;",
-'"':"&quot;","'":"&#39;"
-})[c]);
+function safe(v){
+  return String(v??"").replace(/[&<>"']/g,c=>({
+    "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
+  })[c]);
 }
 
 function todayString(){
-const d=new Date();
-return [
-d.getFullYear(),
-String(d.getMonth()+1).padStart(2,"0"),
-String(d.getDate()).padStart(2,"0")
-].join("-");
+  const d=new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
 }
 
-// MONTHLY BILLING SYSTEM
-
-function billingDate(joiningDate,monthOffset){
-const [y,m,d]=joiningDate.split("-").map(Number);
-
-const index=y*12+(m-1)+monthOffset;
-const year=Math.floor(index/12);
-const month=index%12+1;
-
-const lastDay=new Date(Date.UTC(year,month,0)).getUTCDate();
-const day=Math.min(d,lastDay);
-
-return `${year}-${String(month).padStart(2,"0")}-${String(day).padStart(2,"0")}`;
+function addMonths(dateString,months){
+  const [y,m,d]=dateString.split("-").map(Number);
+  const index=y*12+(m-1)+months;
+  const year=Math.floor(index/12);
+  const month=index%12+1;
+  const last=new Date(year,month,0).getDate();
+  return `${year}-${String(month).padStart(2,"0")}-${String(Math.min(d,last)).padStart(2,"0")}`;
 }
 
-function getCurrentBillingCycle(joiningDate){
-
-const today=todayString();
-let offset=0;
-
-while(billingDate(joiningDate,offset+1)<=today){
-offset++;
+function formatDate(d){
+  if(!d)return "-";
+  return new Date(d+"T00:00:00").toLocaleDateString("en-IN");
 }
 
-return {
-start:billingDate(joiningDate,offset),
-due:billingDate(joiningDate,offset+1)
-};
+function money(n){
+  return "₹"+Number(n||0).toLocaleString("en-IN");
 }
 
-function getFeeStatus(member){
-
-const cycle=getCurrentBillingCycle(member.joining_date);
-
-return member.fee_status==="paid" &&
-member.fee_cycle_start===cycle.start
-?"paid":"pending";
+function getFeeStatus(m){
+  return m.fee_status==="paid" && m.fee_due_date && m.fee_due_date>=todayString()
+    ?"paid":"pending";
 }
 
-function updateDuePreview(){
+function activeMembers(){
+  return members.filter(m=>!m.is_deleted);
+}
 
-const joining=$("joining").value;
+function showPage(id){
+  document.querySelectorAll(".page").forEach(p=>p.classList.add("hidden"));
+  $(id).classList.remove("hidden");
+  window.scrollTo({top:0,behavior:"smooth"});
+}
 
-$("due").value=joining
-?getCurrentBillingCycle(joining).due
-:"";
+function openMembers(filter){
+  $("memberFilter").value=filter;
+  showPage("membersPage");
+  renderMembers();
+}
+
+function openCollection(){
+  $("collectionMonth").value=todayString().slice(0,7);
+  showPage("collectionPage");
+  renderCollection();
 }
 
 // LOGIN
-
 async function login(){
+  if(busy)return;
+  const email=$("email").value.trim();
+  const password=$("password").value;
 
-const email=$("email").value.trim();
-const password=$("password").value;
+  if(!email||!password){
+    alert("Enter email and password");
+    return;
+  }
 
-if(!email||!password){
-alert("Enter email and password");
-return;
-}
+  busy=true;
+  $("loginBtn").disabled=true;
+  $("loginMessage").innerText="Logging in...";
 
-$("loginBtn").disabled=true;
-$("loginMessage").innerText="Logging in...";
-
-const {data,error}=await db.auth.signInWithPassword({
-email,password
-});
-
-$("loginBtn").disabled=false;
-
-if(error){
-$("loginMessage").innerText=error.message;
-return;
-}
-
-currentUser=data.user;
-await showDashboard();
+  try{
+    const {data,error}=await db.auth.signInWithPassword({email,password});
+    if(error)throw error;
+    currentUser=data.user;
+    await showApp();
+  }catch(e){
+    $("loginMessage").innerText=e.message;
+  }finally{
+    busy=false;
+    $("loginBtn").disabled=false;
+  }
 }
 
 async function logout(){
-
-const {error}=await db.auth.signOut();
-
-if(error){
-alert(error.message);
-return;
+  const {error}=await db.auth.signOut();
+  if(error){alert(error.message);return;}
+  currentUser=null;
+  $("app").classList.add("hidden");
+  $("loginBox").classList.remove("hidden");
 }
 
-currentUser=null;
-members=[];
-
-$("dashboard").classList.add("hidden");
-$("loginBox").classList.remove("hidden");
-$("password").value="";
+async function showApp(){
+  if(!currentUser)return;
+  $("loginBox").classList.add("hidden");
+  $("app").classList.remove("hidden");
+  await refreshAll();
 }
 
-// DASHBOARD
+// LOAD MEMBERS AND PAYMENTS
+async function refreshAll(){
+  if(!currentUser)return;
 
-async function showDashboard(){
+  const [mr,pr]=await Promise.all([
+    db.from("gym_members")
+      .select("*")
+      .eq("owner_id",currentUser.id)
+      .order("created_at",{ascending:false}),
+    db.from("gym_payments")
+      .select("*,gym_members(full_name,phone,is_deleted)")
+      .eq("owner_id",currentUser.id)
+      .order("payment_date",{ascending:false})
+      .limit(1000)
+  ]);
 
-if(!currentUser)return;
+  if(mr.error){
+    alert("Member loading error: "+mr.error.message);
+    return;
+  }
+  if(pr.error){
+    alert("Payment loading error: "+pr.error.message);
+    return;
+  }
 
-$("loginBox").classList.add("hidden");
-$("dashboard").classList.remove("hidden");
+  members=mr.data||[];
+  payments=pr.data||[];
 
-await loadAll();
+  renderDashboard();
+  renderMembers();
+  renderPayments();
+  renderCollection();
 }
 
-// LOAD DATA
+function renderDashboard(){
+  const active=activeMembers();
+  const paid=active.filter(m=>getFeeStatus(m)==="paid");
+  const pending=active.filter(m=>getFeeStatus(m)==="pending");
+  const month=todayString().slice(0,7);
 
-async function loadAll(){
+  const monthTotal=payments
+    .filter(p=>(p.payment_date||"").slice(0,7)===month)
+    .reduce((s,p)=>s+Number(p.amount),0);
 
-if(!currentUser)return;
-
-const {data,error}=await db.from("gym_members")
-.select("*")
-.eq("owner_id",currentUser.id)
-.order("created_at",{ascending:false});
-
-if(error){
-alert("Member loading error: "+error.message);
-return;
+  $("totalCount").innerText=active.length;
+  $("paidCount").innerText=paid.length;
+  $("pendingCount").innerText=pending.length;
+  $("monthCollection").innerText=money(monthTotal);
 }
 
-members=data||[];
-
-render();
-
-await loadPayments();
-await loadAttendance();
+// MEMBER FORM
+function newMember(){
+  editingId=null;
+  $("memberModalTitle").innerText="Add New Member";
+  $("memberSaveBtn").innerText="Save Member";
+  $("mName").value="";
+  $("mPhone").value="";
+  $("mFee").value="";
+  $("mJoining").value=todayString();
+  $("memberModal").classList.remove("hidden");
 }
 
-// MEMBER DISPLAY
-
-function render(){
-
-const search=$("search").value.toLowerCase();
-const filter=$("filter").value;
-
-const active=members.filter(m=>m.status==="active");
-
-const paid=members.filter(m=>getFeeStatus(m)==="paid");
-
-const pending=members.filter(m=>getFeeStatus(m)==="pending");
-
-$("total").innerText=members.length;
-$("active").innerText=active.length;
-$("paid").innerText=paid.length;
-$("pending").innerText=pending.length;
-$("collection").innerText="₹"+paymentsTotal;
-
-const list=members.filter(m=>{
-
-const match=(m.full_name+" "+(m.phone||""))
-.toLowerCase().includes(search);
-
-const feeStatus=getFeeStatus(m);
-
-const statusMatch=
-filter==="all"||
-(filter==="paid"&&feeStatus==="paid")||
-(filter==="pending"&&feeStatus==="pending")||
-(filter==="active"&&m.status==="active")||
-(filter==="inactive"&&m.status==="inactive");
-
-return match&&statusMatch;
-});
-
-$("members").innerHTML=list.map(m=>{
-
-const feeStatus=getFeeStatus(m);
-const cycle=getCurrentBillingCycle(m.joining_date);
-
-return `
-<div class="member">
-
-<strong>${safe(m.full_name)}</strong>
-
-<p>Phone: ${safe(m.phone)}</p>
-<p>Monthly Fee: ₹${Number(m.monthly_fee)}</p>
-<p>Joining: ${safe(m.joining_date)}</p>
-<p>Next Due Date: ${safe(cycle.due)}</p>
-
-<p class="${feeStatus==="paid"?"tag":"pending"}">
-Fee: ${feeStatus.toUpperCase()}
-</p>
-
-<p>Status: ${safe(m.status)}</p>
-
-<div class="actions">
-
-<button onclick="editMember('${m.id}')">Edit</button>
-
-<button class="secondary"
-onclick="recordPayment('${m.id}')">
-Record Payment
-</button>
-
-<button class="${feeStatus==="paid"?"secondary":"success"}"
-${feeStatus==="paid"?"disabled":""}
-onclick="markPaid('${m.id}')">
-${feeStatus==="paid"?"Paid":"Mark as Paid"}
-</button>
-
-<button class="secondary"
-onclick="markAttendance('${m.id}')">
-Attendance
-</button>
-
-<button class="secondary"
-onclick="reminder('${m.id}')">
-WhatsApp
-</button>
-
-<button class="danger"
-onclick="deactivate('${m.id}')">
-Deactivate
-</button>
-
-</div>
-</div>
-`;
-
-}).join("")||"<p>No members found.</p>";
-
-}
-
-// ADD / EDIT MEMBER
-
-async function saveMember(){
-
-const name=$("name").value.trim();
-const phone=$("phone").value.trim();
-const fee=Number($("fee").value);
-const joining=$("joining").value;
-
-if(!name||!phone||!fee||!joining){
-alert("Please fill all details");
-return;
-}
-
-if(!/^[0-9]{10}$/.test(phone)){
-alert("Enter a valid 10-digit phone number");
-return;
-}
-
-if(!Number.isFinite(fee)||fee<=0){
-alert("Enter a valid monthly fee");
-return;
-}
-
-if(joining>todayString()){
-alert("Joining date cannot be in the future");
-return;
-}
-
-const cycle=getCurrentBillingCycle(joining);
-
-const record={
-full_name:name,
-phone:phone,
-monthly_fee:fee,
-joining_date:joining,
-fee_due_date:cycle.due
-};
-
-let result;
-
-if(editingId){
-
-const old=members.find(m=>m.id===editingId);
-
-if(old&&old.joining_date!==joining){
-
-record.fee_status="pending";
-record.fee_cycle_start=null;
-}
-
-result=await db.from("gym_members")
-.update(record)
-.eq("id",editingId)
-.eq("owner_id",currentUser.id);
-
-}else{
-
-record.owner_id=currentUser.id;
-record.status="active";
-record.fee_status="pending";
-record.fee_cycle_start=null;
-
-result=await db.from("gym_members")
-.insert(record);
-}
-
-if(result.error){
-alert("Save failed: "+result.error.message);
-return;
-}
-
-alert(editingId?"Member updated!":"Member added!");
-
-resetForm();
-await loadAll();
+function closeMemberModal(){
+  $("memberModal").classList.add("hidden");
 }
 
 function editMember(id){
+  const m=members.find(x=>x.id===id);
+  if(!m)return;
 
-const m=members.find(x=>x.id===id);
-if(!m)return;
-
-editingId=id;
-
-$("name").value=m.full_name;
-$("phone").value=m.phone||"";
-$("fee").value=m.monthly_fee;
-$("joining").value=m.joining_date;
-
-updateDuePreview();
-
-$("formTitle").innerText="Edit Member";
-$("saveBtn").innerText="Update Member";
-$("cancelEdit").classList.remove("hidden");
-
-window.scrollTo({top:0,behavior:"smooth"});
+  editingId=id;
+  $("memberModalTitle").innerText="Edit Member";
+  $("memberSaveBtn").innerText="Update Member";
+  $("mName").value=m.full_name||"";
+  $("mPhone").value=m.phone||"";
+  $("mFee").value=m.monthly_fee||"";
+  $("mJoining").value=m.joining_date||todayString();
+  $("memberModal").classList.remove("hidden");
 }
 
-function resetForm(){
+async function saveMember(){
+  if(busy)return;
 
-editingId=null;
+  const name=$("mName").value.trim();
+  const phone=$("mPhone").value.trim();
+  const fee=Number($("mFee").value);
+  const joining=$("mJoining").value;
 
-["name","phone","fee","joining","due"].forEach(id=>{
-$(id).value="";
-});
+  if(!name||!phone||!fee||!joining){
+    alert("Please fill all member details.");
+    return;
+  }
+  if(!/^[0-9]{10}$/.test(phone)){
+    alert("Enter a valid 10-digit phone number.");
+    return;
+  }
+  if(!Number.isFinite(fee)||fee<=0){
+    alert("Enter a valid monthly fee.");
+    return;
+  }
+  if(joining>todayString()){
+    alert("Joining date cannot be in the future.");
+    return;
+  }
 
-$("formTitle").innerText="Add New Member";
-$("saveBtn").innerText="+ Add Member";
-$("cancelEdit").classList.add("hidden");
+  const record={
+    full_name:name,
+    phone,
+    monthly_fee:fee,
+    joining_date:joining
+  };
+
+  busy=true;
+  $("memberSaveBtn").disabled=true;
+
+  try{
+    let result;
+
+    if(editingId){
+      result=await db.from("gym_members")
+        .update(record)
+        .eq("id",editingId)
+        .eq("owner_id",currentUser.id)
+        .eq("is_deleted",false);
+    }else{
+      record.owner_id=currentUser.id;
+      record.status="active";
+      record.fee_status="pending";
+      record.fee_cycle_start=null;
+      record.fee_due_date=addMonths(joining,1);
+      record.membership_start=joining;
+      record.is_deleted=false;
+
+      result=await db.from("gym_members").insert(record);
+    }
+
+    if(result.error)throw result.error;
+
+    closeMemberModal();
+    await refreshAll();
+    alert(editingId?"Member updated successfully.":"Member added successfully.");
+  }catch(e){
+    alert("Save failed: "+e.message);
+  }finally{
+    busy=false;
+    $("memberSaveBtn").disabled=false;
+  }
 }
 
-// MANUAL PAID
+// MEMBER LIST
+function renderMembers(){
+  const search=$("memberSearch").value.toLowerCase();
+  const filter=$("memberFilter").value;
 
-async function markPaid(id){
+  let list=members.filter(m=>{
+    const archived=!!m.is_deleted;
+    const status=getFeeStatus(m);
+    const match=(m.full_name+" "+(m.phone||"")).toLowerCase().includes(search);
 
-const m=members.find(x=>x.id===id);
-if(!m)return;
+    let filterMatch=false;
+    if(filter==="archived")filterMatch=archived;
+    else if(filter==="all")filterMatch=!archived;
+    else if(filter==="paid")filterMatch=!archived&&status==="paid";
+    else if(filter==="pending")filterMatch=!archived&&status==="pending";
 
-const cycle=getCurrentBillingCycle(m.joining_date);
+    return match&&filterMatch;
+  });
 
-if(!confirm(
-"Mark ₹"+m.monthly_fee+
-" monthly fee as PAID for this billing cycle?"
-))return;
+  $("memberList").innerHTML=list.map(m=>{
+    const archived=!!m.is_deleted;
+    const status=getFeeStatus(m);
 
-const {error}=await db.from("gym_members")
-.update({
-fee_status:"paid",
-fee_cycle_start:cycle.start,
-fee_due_date:cycle.due
-})
-.eq("id",id)
-.eq("owner_id",currentUser.id);
-
-if(error){
-alert("Status update failed: "+error.message);
-return;
+    return `
+    <div class="member">
+      <strong>${safe(m.full_name)}</strong>
+      <p>Phone: ${safe(m.phone)}</p>
+      <p>Monthly Fee: ${money(m.monthly_fee)}</p>
+      <p>Joining Date: ${formatDate(m.joining_date)}</p>
+      <p>Next Due Date: ${formatDate(m.fee_due_date)}</p>
+      <p class="${status==="paid"?"tag":"pending"}">
+        Fee Status: ${archived?"ARCHIVED":status.toUpperCase()}
+      </p>
+      ${archived?`
+        <div class="actions">
+          <button class="success" onclick="restoreMember('${m.id}')">Restore Member</button>
+        </div>
+      `:`
+        <div class="actions">
+          <button onclick="editMember('${m.id}')">Edit</button>
+          <button class="success" onclick="openPayment('${m.id}')">Record Payment</button>
+          <button class="secondary" onclick="reminder('${m.id}')">WhatsApp Reminder</button>
+          <button class="danger" onclick="archiveMember('${m.id}')">Archive Member</button>
+        </div>
+      `}
+    </div>`;
+  }).join("")||'<div class="empty">No members found.</div>';
 }
 
-alert("Member marked as PAID!");
+// ARCHIVE - DO NOT DELETE PAYMENT HISTORY
+async function archiveMember(id){
+  const m=members.find(x=>x.id===id);
+  if(!m)return;
 
-await loadAll();
+  if(!confirm("Archive "+m.full_name+"? Their payment history will be preserved."))return;
+
+  const {error}=await db.from("gym_members")
+    .update({is_deleted:true,status:"inactive"})
+    .eq("id",id)
+    .eq("owner_id",currentUser.id);
+
+  if(error){
+    alert("Archive failed: "+error.message);
+    return;
+  }
+
+  await refreshAll();
+  alert("Member archived. Payment history is preserved.");
 }
 
-// DEACTIVATE
+async function restoreMember(id){
+  if(!confirm("Restore this member?"))return;
 
-async function deactivate(id){
+  const {error}=await db.from("gym_members")
+    .update({is_deleted:false,status:"active"})
+    .eq("id",id)
+    .eq("owner_id",currentUser.id);
 
-if(!confirm("Deactivate this member?"))return;
+  if(error){
+    alert("Restore failed: "+error.message);
+    return;
+  }
 
-const {error}=await db.from("gym_members")
-.update({status:"inactive"})
-.eq("id",id)
-.eq("owner_id",currentUser.id);
-
-if(error){
-alert("Error: "+error.message);
-return;
+  await refreshAll();
 }
 
-await loadAll();
+// PAYMENT FORM
+function openPayment(id){
+  const m=members.find(x=>x.id===id&&!x.is_deleted);
+  if(!m)return;
+
+  paymentMemberId=id;
+  $("paymentMemberInfo").innerText=
+    m.full_name+" | Monthly fee: "+money(m.monthly_fee);
+
+  $("pAmount").value="";
+  $("pMonths").value="1";
+  $("pDate").value=todayString();
+  $("pMethod").value="cash";
+  $("pNotes").value="";
+
+  $("paymentModal").classList.remove("hidden");
 }
 
-// RECORD PAYMENT
-// Recording a payment does NOT automatically mark Paid.
-
-async function recordPayment(id){
-
-const m=members.find(x=>x.id===id);
-if(!m)return;
-
-const amount=Number(prompt(
-"Enter payment amount. Monthly fee: ₹"+m.monthly_fee
-));
-
-if(!Number.isFinite(amount)||amount<=0){
-alert("Invalid payment amount");
-return;
+function closePaymentModal(){
+  $("paymentModal").classList.add("hidden");
+  paymentMemberId=null;
 }
 
-const method=prompt(
-"Payment method: cash, upi, card, bank",
-"cash"
-);
+async function savePayment(){
+  if(busy||!paymentMemberId)return;
 
-if(method===null)return;
+  const m=members.find(x=>x.id===paymentMemberId&&!x.is_deleted);
+  if(!m)return;
 
-const paymentMethod=method.trim().toLowerCase();
+  const amount=Number($("pAmount").value);
+  const months=Number($("pMonths").value);
+  const paymentDate=$("pDate").value;
+  const method=$("pMethod").value;
+  const notes=$("pNotes").value.trim();
 
-if(!["cash","upi","card","bank"].includes(paymentMethod)){
-alert("Invalid payment method");
-return;
+  if(!Number.isFinite(amount)||amount<=0){
+    alert("Enter the actual amount received.");
+    return;
+  }
+  if(![1,2,3,4,5,6,9,12].includes(months)){
+    alert("Select a valid payment duration.");
+    return;
+  }
+  if(!paymentDate){
+    alert("Select payment date.");
+    return;
+  }
+
+  // A paid membership is extended from its current due date.
+  // Otherwise the new period starts on the payment date.
+  let periodStart=paymentDate;
+
+  if(m.fee_status==="paid"&&m.fee_due_date&&m.fee_due_date>=paymentDate){
+    periodStart=m.fee_due_date;
+  }
+
+  const periodEnd=addMonths(periodStart,months);
+
+  if(!confirm(
+    "Confirm payment?\n\nMember: "+m.full_name+
+    "\nAmount: "+money(amount)+
+    "\nDuration: "+months+" month(s)"+
+    "\nPeriod: "+formatDate(periodStart)+" to "+formatDate(periodEnd)
+  ))return;
+
+  busy=true; 
+  $("paymentSaveBtn").disabled=true;
+
+  try{
+    const payment={
+      owner_id:currentUser.id,
+      member_id:m.id,
+      amount,
+      payment_method:method,
+      payment_date:paymentDate,
+      billing_period_start:periodStart,
+      billing_period_end:periodEnd,
+      payment_months:months,
+      notes:notes||null
+    };
+
+    const {error:paymentError}=await db.from("gym_payments").insert(payment);
+    if(paymentError)throw paymentError;
+
+    const {error:memberError}=await db.from("gym_members")
+      .update({
+        fee_status:"paid",
+        fee_cycle_start:periodStart,
+        fee_due_date:periodEnd,
+        membership_end:periodEnd
+      })
+      .eq("id",m.id)
+      .eq("owner_id",currentUser.id);
+
+    if(memberError){
+      alert("Payment was saved, but member status update failed. Please refresh and check this member. Error: "+memberError.message);
+      await refreshAll();
+      closePaymentModal();
+      return;
+    }
+
+    closePaymentModal();
+    await refreshAll();
+    alert("Payment recorded successfully.");
+
+  }catch(e){
+    alert("Payment could not be saved: "+e.message);
+  }finally{
+    busy=false;
+    $("paymentSaveBtn").disabled=false;
+  }
 }
 
-const cycle=getCurrentBillingCycle(m.joining_date);
+// PAYMENT HISTORY
+function renderPayments(){
+  const search=$("paymentSearch").value.toLowerCase();
 
-const {error}=await db.from("gym_payments").insert({
+  const list=payments.filter(p=>{
+    const name=p.gym_members?.full_name||"";
+    return name.toLowerCase().includes(search);
+  });
 
-owner_id:currentUser.id,
-member_id:id,
-amount:amount,
-payment_method:paymentMethod,
-payment_date:todayString(),
-billing_period_start:cycle.start,
-billing_period_end:cycle.due
-
-});
-
-if(error){
-alert("Payment failed: "+error.message);
-return;
+  $("paymentList").innerHTML=list.map(p=>`
+    <div class="member">
+      <strong>${safe(p.gym_members?.full_name||"Archived / Unknown Member")}</strong>
+      <p>Amount: <strong>${money(p.amount)}</strong></p>
+      <p>Payment Date: ${formatDate(p.payment_date)}</p>
+      <p>Duration: ${Number(p.payment_months||1)} month(s)</p>
+      <p>Method: ${safe(p.payment_method)}</p>
+      <p>Covered Period: ${formatDate(p.billing_period_start)} to ${formatDate(p.billing_period_end)}</p>
+      ${p.notes?`<p>Note: ${safe(p.notes)}</p>`:""}
+    </div>
+  `).join("")||'<div class="empty">No payments found.</div>';
 }
 
-alert("Payment recorded! Fee status has NOT been changed.");
+// COLLECTION REPORT
+function renderCollection(){
+  if(!$("collectionMonth").value)return;
 
-await loadAll();
+  const selected=$("collectionMonth").value;
+
+  const selectedPayments=payments.filter(p=>
+    (p.payment_date||"").slice(0,7)===selected
+  );
+
+  const selectedTotal=selectedPayments.reduce(
+    (s,p)=>s+Number(p.amount),0
+  );
+
+  const allTotal=payments.reduce(
+    (s,p)=>s+Number(p.amount),0
+  );
+
+  $("selectedCollection").innerText=money(selectedTotal);
+  $("allTimeCollection").innerText=money(allTotal);
+
+  $("collectionList").innerHTML=selectedPayments.map(p=>`
+    <div class="member">
+      <strong>${safe(p.gym_members?.full_name||"Archived / Unknown Member")}</strong>
+      <p>Amount: ${money(p.amount)}</p>
+      <p>Date: ${formatDate(p.payment_date)}</p>
+      <p>Method: ${safe(p.payment_method)}</p>
+    </div>
+  `).join("")||'<div class="empty">No transactions in this month.</div>';
 }
 
-// PAYMENT HISTORY AND TOTAL COLLECTION
-
-async function loadPayments(){
-
-const {data:totalData,error:totalError}=await db
-.from("gym_payments")
-.select("amount,created_at")
-.eq("owner_id",currentUser.id)
-.order("created_at",{ascending:true})
-.range(0,999);
-
-if(totalError){
-$("payments").innerText="Payment loading error: "+totalError.message;
-return;
-}
-
-let allPayments=totalData||[];
-
-let offset=1000;
-
-while(totalData&&totalData.length===1000){
-
-const {data,error}=await db.from("gym_payments")
-.select("amount,created_at")
-.eq("owner_id",currentUser.id)
-.order("created_at",{ascending:true})
-.range(offset,offset+999);
-
-if(error){
-$("payments").innerText="Collection loading error: "+error.message;
-return;
-}
-
-if(!data||data.length===0)break;
-
-allPayments=allPayments.concat(data);
-offset+=1000;
-
-if(data.length<1000)break;
-}
-
-paymentsTotal=allPayments.reduce(
-(sum,p)=>sum+Number(p.amount),0
-);
-
-$("collection").innerText="₹"+paymentsTotal;
-
-const {data,error}=await db.from("gym_payments")
-.select("*,gym_members(full_name)")
-.eq("owner_id",currentUser.id)
-.order("payment_date",{ascending:false})
-.limit(30);
-
-if(error){
-$("payments").innerText="Payment history error: "+error.message;
-return;
-}
-
-$("payments").innerHTML=(data||[]).map(p=>`
-
-<div class="member">
-<strong>${safe(p.gym_members?.full_name||"Member")}</strong>
-<p>Amount: ₹${Number(p.amount)}</p>
-<p>Date: ${safe(p.payment_date)}</p>
-<p>Method: ${safe(p.payment_method)}</p>
-<p>Billing Period: ${safe(p.billing_period_start)} to ${safe(p.billing_period_end)}</p>
-</div>
-
-`).join("")||"<p>No payments yet.</p>";
-
-render();
-}
-
-// ATTENDANCE
-
-async function markAttendance(id){
-
-const {error}=await db.from("gym_attendance").insert({
-
-owner_id:currentUser.id,
-member_id:id
-
-});
-
-if(error){
-
-alert(error.code==="23505"?
-"Attendance already marked today.":
-"Attendance error: "+error.message);
-
-return;
-}
-
-alert("Attendance marked!");
-
-await loadAttendance();
-}
-
-async function loadAttendance(){
-
-const today=todayString();
-
-const {data,error}=await db.from("gym_attendance")
-.select("*,gym_members(full_name)")
-.eq("owner_id",currentUser.id)
-.eq("attendance_date",today)
-.order("check_in",{ascending:false});
-
-if(error){
-$("attendance").innerText="Attendance error: "+error.message;
-return;
-}
-
-$("attendanceCount").innerText=(data||[]).length;
-
-$("attendance").innerHTML=(data||[]).map(a=>`
-
-<div class="member">
-<strong>${safe(a.gym_members?.full_name||"Member")}</strong>
-<p>Check-in: ${new Date(a.check_in).toLocaleTimeString()}</p>
-</div>
-
-`).join("")||"<p>No attendance yet.</p>";
-
-}
-
-// WHATSAPP REMINDER
-
+// WHATSAPP
 function reminder(id){
+  const m=members.find(x=>x.id===id);
+  if(!m||!m.phone){
+    alert("Phone number missing.");
+    return;
+  }
 
-const m=members.find(x=>x.id===id);
-if(!m)return;
+  const status=getFeeStatus(m);
+  const message=encodeURIComponent(
+    "Hello "+m.full_name+
+    ", your gym fee is currently "+status+
+    ". Next due date: "+(m.fee_due_date||"Please contact the gym")+
+    ". THE FITNESS CLUB"
+  );
 
-if(!m.phone){
-alert("Member phone number missing");
-return;
+  window.open("https://wa.me/91"+m.phone+"?text="+message,"_blank");
 }
 
-const status=getFeeStatus(m);
-const cycle=getCurrentBillingCycle(m.joining_date);
+// CSV EXPORT
+function downloadCSV(filename,rows){
+  if(!rows.length){
+    alert("No records to export.");
+    return;
+  }
 
-const message=encodeURIComponent(
+  const csv=rows.map(row=>row.map(value=>
+    '"'+String(value??"").replace(/"/g,'""')+'"'
+  ).join(",")).join("\n");
 
-"Hello "+m.full_name+
-", your gym fee of ₹"+m.monthly_fee+
-" is "+status+
-". Due date: "+cycle.due+
-". THE FITNESS CLUB"
-
-);
-
-window.open(
-"https://wa.me/91"+m.phone+"?text="+message,
-"_blank"
-);
-
+  const blob=new Blob(["\uFEFF"+csv],{type:"text/csv;charset=utf-8"});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement("a");
+  a.href=url;
+  a.download=filename;
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
-// RESTORE LOGIN SESSION
+function exportCSV(){
+  const rows=[
+    ["Record Type","Member Name","Phone","Amount","Date","Method","Duration","Period Start","Period End","Notes"]
+  ];
 
+  members.forEach(m=>{
+    rows.push([
+      m.is_deleted?"Archived Member":"Member",
+      m.full_name,m.phone,m.monthly_fee,m.joining_date,
+      "", "", "", "", ""
+    ]);
+  });
+
+  payments.forEach(p=>{
+    rows.push([
+      "Payment",
+      p.gym_members?.full_name||"Archived / Unknown Member",
+      p.gym_members?.phone||"",
+      p.amount,p.payment_date,p.payment_method,
+      p.payment_months,p.billing_period_start,
+      p.billing_period_end,p.notes||""
+    ]);
+  });
+
+  downloadCSV("fitness-club-backup.csv",rows);
+}
+
+// SESSION RESTORE
 db.auth.getSession().then(async({data,error})=>{
-
-if(error){
-console.error(error);
-return;
-}
-
-if(data.session){
-
-currentUser=data.session.user;
-await showDashboard();
-
-}
-
+  if(error){
+    console.error(error);
+    return;
+  }
+  if(data.session){
+    currentUser=data.session.user;
+    await showApp();
+  }
 });
 
 db.auth.onAuthStateChange((event,session)=>{
-
-if(event==="SIGNED_OUT"){
-
-currentUser=null;
-members=[];
-
-$("dashboard").classList.add("hidden");
-$("loginBox").classList.remove("hidden");
-
-}
-
+  if(event==="SIGNED_OUT"){
+    currentUser=null;
+    members=[];
+    payments=[];
+    $("app").classList.add("hidden");
+    $("loginBox").classList.remove("hidden");
+  }
 });
+
+// Initial month value
+$("collectionMonth").value=todayString().slice(0,7);
 
 </script>
 </body>
 </html>
+
+  
